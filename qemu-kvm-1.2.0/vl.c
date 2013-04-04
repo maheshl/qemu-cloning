@@ -3231,6 +3231,13 @@ int main(int argc, char **argv, char **envp)
                 incoming = optarg;
                 runstate_set(RUN_STATE_INMIGRATE);
                 break;
+            /* Support for new option 'cloneincoming' at destination while cloning */ 
+            /* Destination will listen over the argument given*/   
+            case QEMU_OPTION_cloneincoming:
+                /*ToDo: Define new constant incoming_cloning*/
+                incoming = optarg;
+                runstate_set(RUN_STATE_INMIGRATE);
+                break;
             case QEMU_OPTION_nodefaults:
                 default_serial = 0;
                 default_parallel = 0;

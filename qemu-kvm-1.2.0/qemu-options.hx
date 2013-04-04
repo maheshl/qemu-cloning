@@ -2664,6 +2664,15 @@ STEXI
 Prepare for incoming migration, listen on @var{port}.
 ETEXI
 
+DEF("cloneincoming", HAS_ARG, QEMU_OPTION_cloneincoming, \
+    "-cloneincoming p     prepare for incoming clone, listen on port p\n",
+    QEMU_ARCH_ALL)
+STEXI
+@item -cloneincoming @var{port}
+@findex -cloneincoming
+Prepare for incoming clone, listen on @var{port}.
+ETEXI
+
 DEF("nodefaults", 0, QEMU_OPTION_nodefaults, \
     "-nodefaults     don't create default devices\n", QEMU_ARCH_ALL)
 STEXI

@@ -2931,6 +2931,13 @@ static mon_cmd_t info_cmds[] = {
     },
 #endif
     {
+        .name       = "clone",
+        .args_type  = "",
+        .params     = "",
+        .help       = "show cloning status",
+        .mhandler.info = hmp_info_migrate,
+    },
+    {
         .name       = "migrate",
         .args_type  = "",
         .params     = "",

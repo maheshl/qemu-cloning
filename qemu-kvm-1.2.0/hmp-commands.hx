@@ -797,6 +797,27 @@ Inject an NMI on the given CPU (x86 only).
 ETEXI
 
     {
+        .name       = "clone",
+        .args_type  = "detach:-d,blk:-b,inc:-i,uri:s",
+        .params     = "[-d] [-b] [-i] uri",
+        .help       = "migrate to URI (using -d to not wait for completion)"
+		      "\n\t\t\t -b for migration without shared storage with"
+		      " full copy of disk\n\t\t\t -i for migration without "
+		      "shared storage with incremental copy of disk "
+		      "(base image shared between src and destination)",
+        .mhandler.cmd = hmp_migrate,
+    },
+
+
+STEXI
+@item clone [-d] [-b] [-i] @var{uri}
+@findex clone
+Clone to @var{uri} (using -d to not wait for completion).
+	-b for migration with full copy of disk
+	-i for migration with incremental copy of disk (base image is shared)
+ETEXI
+
+    {
         .name       = "migrate",
         .args_type  = "detach:-d,blk:-b,inc:-i,uri:s",
         .params     = "[-d] [-b] [-i] uri",
@@ -1462,6 +1483,8 @@ show the current VM UUID
 show CPU statistics
 @item info usernet
 show user network stack connection states
+@item info clone
+show clone status
 @item info migrate
 show migration status
 @item info migrate_capabilities
