@@ -805,7 +805,7 @@ ETEXI
 		      " full copy of disk\n\t\t\t -i for migration without "
 		      "shared storage with incremental copy of disk "
 		      "(base image shared between src and destination)",
-        .mhandler.cmd = hmp_migrate,
+        .mhandler.cmd = hmp_precopy_clone,
     },
 
 

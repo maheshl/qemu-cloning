@@ -1026,6 +1026,27 @@ void hmp_migrate(Monitor *mon, const QDict *qdict)
     }
 }
 
+// add_pavan
+ void hmp_precopy_clone(Monitor *mon, const QDict *qdict)
+{
+//  no concept of detaching from monitor unlike migration
+//  as the source vm also keeps running 
+//  int detach = qdict_get_try_bool(qdict, "detach", 0);
+    int blk = qdict_get_try_bool(qdict, "blk", 0);
+    int inc = qdict_get_try_bool(qdict, "inc", 0);
+    const char *uri = qdict_get_str(qdict, "uri");
+    Error *err = NULL;
+
+    qmp_precopy_cloning(uri, !!blk, blk, !!inc, inc, &err);  
+
+    if (err) {
+        monitor_printf(mon, "precopy_clone: %s\n", error_get_pretty(err));
+        error_free(err);
+        return;
+    }
+}
+// end_pavan
+
 void hmp_device_del(Monitor *mon, const QDict *qdict)
 {
     const char *id = qdict_get_str(qdict, "id");

@@ -32,7 +32,7 @@
 #define DPRINTF(fmt, ...) \
     do { } while (0)
 #endif
-
+//#define DCLOUDCLONE
 enum {
     MIG_STATE_ERROR,
     MIG_STATE_SETUP,
@@ -273,7 +273,13 @@ static void migrate_fd_completed(MigrationState *s)
         s->state = MIG_STATE_COMPLETED;
         runstate_set(RUN_STATE_POSTMIGRATE);
     }
+#ifdef DCLOUDCLONE
+    fprintf(stderr, "migrate_fd_completed: Before notifiers\n");
+#endif
     notifier_list_notify(&migration_state_notifiers, s);
+#ifdef DCLOUDCLONE
+    fprintf(stderr, "migrate_fd_completed: After notifiers\n");
+#endif
 }
 
 static void migrate_fd_put_notify(void *opaque)
@@ -417,6 +423,70 @@ bool migration_has_failed(MigrationState *s)
             s->state == MIG_STATE_ERROR);
 }
 
+
+// start_pavan
+
+void cloning_stop_n_copy_phase(MigrationState *s)
+{
+        int old_vm_running = runstate_is_running();
+
+	// what is this ??? 
+        qemu_system_wakeup_request(QEMU_WAKEUP_REASON_OTHER);
+        vm_stop_force_state(RUN_STATE_FINISH_MIGRATE);
+
+	int status = qemu_savevm_state_complete(s->file);
+        if (status < 0) {
+            migrate_fd_error(s);
+        } else {
+            migrate_fd_completed(s);
+        }
+#ifdef DCLOUDCLONE
+	fprintf(stderr, "do_precopy_cloning:%d %d \n", old_vm_running , s->opType);        
+#endif
+	s->total_time = qemu_get_clock_ms(rt_clock) - s->total_time;
+        if (s->state != MIG_STATE_COMPLETED || s->opType == CLONING) {
+            if (old_vm_running) {
+                vm_start();
+            }
+        }
+}
+
+void cloning_iterate_phase(void *opaque)
+{
+    MigrationState *s = (MigrationState *)opaque;
+    int status  = qemu_savevm_state_iterate(s->file);
+
+    if ( status < 0) {
+        migrate_fd_error(s);
+        return;
+    } else if (status == 1) {
+	cloning_stop_n_copy_phase(s);
+    }
+}
+void do_precopy_cloning(MigrationState *s)
+{   
+#ifdef DCLOUDCLONE
+    fprintf(stderr, "do_precopy_cloning:start\n");
+#endif
+    s->state = MIG_STATE_ACTIVE;	// set state to active from setup
+    
+    // open an in-memory file to save the ram and create sections to send to destination
+    s->file = qemu_fopen_ops_buffered(s,
+                                      s->bandwidth_limit,
+                                      migrate_fd_put_buffer,
+                                      cloning_iterate_phase,
+                                      migrate_fd_wait_for_unfreeze,
+                                      migrate_fd_close);
+
+    if(qemu_savevm_state_begin(s->file, &s->params) < 0 )
+    {
+	migrate_fd_error(s);
+	return;
+    }
+    cloning_iterate_phase(s);
+}
+// end_pavan
+
 void migrate_fd_connect(MigrationState *s)
 {
     int ret;
@@ -486,6 +556,13 @@ void qmp_migrate(const char *uri, bool has_blk, bool blk,
 
     params.blk = blk;
     params.shared = inc;
+    
+#ifdef DCLOUDCLONE
+    fprintf(stderr, "qmp_migrate:start\n");
+#endif
+    // start_pavan
+    s->opType = MIGRATION;
+    // end_pavan
 
     if (s->state == MIG_STATE_ACTIVE) {
         error_set(errp, QERR_MIGRATION_ACTIVE);
@@ -529,6 +606,52 @@ void qmp_migrate(const char *uri, bool has_blk, bool blk,
 
     notifier_list_notify(&migration_state_notifiers, s);
 }
+
+// add_pavan
+void qmp_precopy_cloning(const char *uri, bool has_blk, bool blk,
+                 bool has_inc, bool inc, Error **errp)
+{
+    MigrationState *s = migrate_get_current();
+    const char *p;
+    int ret;
+
+#ifdef DCLOUDCLONE
+    fprintf(stderr, "qmp_precopy_cloning:start\n");
+#endif
+    s->opType = CLONING;
+
+    MigrationParams params;
+    //if( has_blk) params.blk = blk;
+    //if( has_inc) params.shared = inc;
+    params.blk = blk;
+    params.shared = inc;
+
+    // if in case any of the device's state can not be saved
+    // you can't do cloning.. in such case simply return
+    if (qemu_savevm_state_blocked(errp) == true) {
+        error_set(errp, QERR_UNDEFINED_ERROR); 	/// search for and set to appropriate error	
+        return;
+    }
+
+    // sets the current wall time and params in the migration state
+    s->params = params;
+    s->total_time = qemu_get_clock_ms(rt_clock);
+
+    // 
+    if (strstart(uri, "tcp:", &p)) {
+        ret = tcp_start_outgoing_precopy_cloning(s, p, errp);
+    }
+    else {
+        error_set(errp, QERR_INVALID_PARAMETER_VALUE, "uri", "only tcp protocol is supported for cloning");
+        return;
+    }
+    
+    if (ret < 0)
+        if (!error_is_set(errp))
+            error_set(errp, QERR_UNDEFINED_ERROR,"ret", "ret code for failed cloning");
+    
+}
+// end_pavan
 
 void qmp_migrate_cancel(Error **errp)
 {

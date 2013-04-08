@@ -26,6 +26,13 @@ struct MigrationParams {
     bool shared;
 };
 
+// add_pavan
+enum {
+        MIGRATION = 0,
+        CLONING = 1
+};
+// end_pavan
+
 typedef struct MigrationState MigrationState;
 
 struct MigrationState
@@ -42,7 +49,17 @@ struct MigrationState
     int64_t total_time;
     bool enabled_capabilities[MIGRATION_CAPABILITY_MAX];
     int64_t xbzrle_cache_size;
+//  add_pavan
+    bool opType;	// should be set to CLONING or MIGRATION
+//  end_pavan
 };
+
+//  add_pavan
+void do_precopy_cloning(MigrationState *s);
+void cloning_iterate_phase(void *opaque);
+void cloning_stop_n_copy_phase(MigrationState *s);
+int tcp_start_outgoing_precopy_cloning(MigrationState *s,const char *uri, Error **errp);
+//  end_pavan
 
 void process_incoming_migration(QEMUFile *f);
 

@@ -70,9 +70,13 @@ static void tcp_wait_for_connect(void *opaque)
     }
 
     qemu_set_fd_handler2(s->fd, NULL, NULL, NULL, NULL);
-
     if (val == 0)
-        migrate_fd_connect(s);
+    {
+	if(s->opType == CLONING)
+	    do_precopy_cloning(s);
+        else if(s->opType == MIGRATION)
+            migrate_fd_connect(s);
+    }
     else {
         DPRINTF("error connecting %d\n", val);
         migrate_fd_error(s);
@@ -103,6 +107,33 @@ int tcp_start_outgoing_migration(MigrationState *s, const char *host_port,
 
     return 0;
 }
+
+// add_pavan
+int tcp_start_outgoing_precopy_cloning(MigrationState *s, const char *host_port,
+                                 Error **errp)
+{
+    s->get_error = socket_errno;             // error to return in case socket failed
+    s->write = socket_write;                 // write handler
+    s->close = tcp_close;                    // close handler
+
+    bool in_progress;
+    // initialize the socket and connect to destination
+    s->fd = inet_connect(host_port, false, &in_progress, errp);
+    if (error_is_set(errp)) {
+        migrate_fd_error(s);
+        return -1;
+    }
+    
+    // set an event handler. If in case destination accepts the connection
+    // start the cloning process
+    qemu_set_fd_handler2(s->fd, NULL, NULL, tcp_wait_for_connect, s);
+
+
+    // this is where the control flow returns back and you get a qemu console
+    // tcp_wait_for_connect executes in background which triggers the subsequent methods
+    return 0;
+}
+// end_pavan
 
 static void tcp_accept_incoming_migration(void *opaque)
 {
