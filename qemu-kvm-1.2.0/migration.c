@@ -46,6 +46,11 @@ enum {
 /* Migration XBZRLE default cache size */
 #define DEFAULT_MIGRATE_CACHE_SIZE (64 * 1024 * 1024)
 
+//Mahesh:CloudClone:changes
+//True indicates pre copy cloning is in progress at destination.
+//Source need to use opType in MigrationState
+bool is_precopy_clone_dest = false;
+
 static NotifierList migration_state_notifiers =
     NOTIFIER_LIST_INITIALIZER(migration_state_notifiers);
 
@@ -103,6 +108,13 @@ void process_incoming_migration(QEMUFile *f)
         vm_start();
     } else {
         runstate_set(RUN_STATE_PRELAUNCH);
+    }
+
+    //Mahesh: CloudClone changes
+    //Signals that cloning is completed at destination by writing a data into a pip
+    if(is_precopy_clone_dest)
+    {
+      signal_end_cloning();
     }
 }
 

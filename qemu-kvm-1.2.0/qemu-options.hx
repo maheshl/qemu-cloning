@@ -2670,7 +2670,15 @@ DEF("cloneincoming", HAS_ARG, QEMU_OPTION_cloneincoming, \
 STEXI
 @item -cloneincoming @var{port}
 @findex -cloneincoming
-Prepare for incoming clone, listen on @var{port}.
+Prepares the destination for clone, listen on @var{port}.
+ETEXI
+
+DEF("vmdir", HAS_ARG, QEMU_OPTION_vmdir, \
+    "-vmdir string    set the path of base VM directory of the guest. \n",
+    QEMU_ARCH_ALL)
+STEXI
+@item -vmdir @var{vmdir}
+Stores the path of @var{vmdir} corresponds to the guest. AGILE script need to be notified about completion of cloning
 ETEXI
 
 DEF("nodefaults", 0, QEMU_OPTION_nodefaults, \

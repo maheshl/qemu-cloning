@@ -49,10 +49,17 @@ struct MigrationState
     int64_t total_time;
     bool enabled_capabilities[MIGRATION_CAPABILITY_MAX];
     int64_t xbzrle_cache_size;
-//  add_pavan
-    bool opType;	// should be set to CLONING or MIGRATION
+//  add_Mahesh, pavan
+    bool opType;	// should be set to CLONING or MIGRATION incase of source.
+                        // Destination will use is_precopy_clone.
 //  end_pavan
 };
+
+//Mahesh:CloudClone:changes
+//True indicates pre copy cloning is in progress at destination.
+//Source need to use opType in MigrationState
+extern bool is_precopy_clone_dest;
+void signal_end_cloning(void);
 
 //  add_pavan
 void do_precopy_cloning(MigrationState *s);

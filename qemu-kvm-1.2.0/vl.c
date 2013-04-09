@@ -234,6 +234,11 @@ uint8_t *boot_splash_filedata;
 int boot_splash_filedata_size;
 uint8_t qemu_extra_params_fw[2];
 
+//Mahesh:CloudCLone changes. Stores the base dir of VM
+//Uses this to notify AGILE script about completion of cloning process at destination
+const char *clone_vmdir = NULL;
+#define DCLOUDCLONE
+
 typedef struct FWBootEntry FWBootEntry;
 
 struct FWBootEntry {
@@ -310,6 +315,41 @@ static void res_free(void)
         boot_splash_filedata = NULL;
     }
 }
+
+//Mahesh: CloudCLone changes -- START
+/**Signals that cloning is completed at destination by writing a data into a pipe.
+ * AGILE polls over this pipe to check whether cloning is completed 
+ */
+void signal_end_cloning(void)
+{
+  const char* output_str = "oooooooooo";
+  int output_str_len = 10;
+  char path[100];
+
+  if(clone_vmdir == NULL)
+  {
+    return;
+  }
+  sprintf(path, "%s/serial/pipe.in",clone_vmdir);
+ 
+  int pipe_in_fd = open(path,O_WRONLY|O_CREAT,777);
+  int status = -1;
+  if( pipe_in_fd > 0 )
+  {
+    status = write( pipe_in_fd, output_str, output_str_len);
+  }
+  else
+  {
+    fprintf(stderr, "signal_end_cloning: Error in opening file %s\n", path);
+  }
+#ifdef DCLOUDCLONE
+  fprintf(stderr, "signal_end_cloning: written %d bytes to %s\n", status, path);
+#endif
+  //mark the completion
+  is_precopy_clone_dest = false;
+  clone_vmdir = NULL;
+}
+//Mahesh: CloudCLone changes -- END
 
 static int default_driver_check(QemuOpts *opts, void *opaque)
 {
@@ -3231,13 +3271,20 @@ int main(int argc, char **argv, char **envp)
                 incoming = optarg;
                 runstate_set(RUN_STATE_INMIGRATE);
                 break;
+            /*Mahesh:CloudClone changes_START*/
             /* Support for new option 'cloneincoming' at destination while cloning */ 
             /* Destination will listen over the argument given*/   
             case QEMU_OPTION_cloneincoming:
-                /*ToDo: Define new constant incoming_cloning*/
                 incoming = optarg;
+                is_precopy_clone_dest = true;
                 runstate_set(RUN_STATE_INMIGRATE);
                 break;
+            /*Stores the base directory of VM used in AGILE. Used to notify completion of cloning at destination*/
+            case QEMU_OPTION_vmdir:
+                clone_vmdir = optarg;
+                break;
+
+            /*Mahesh:CloudClone changes_START*/
             case QEMU_OPTION_nodefaults:
                 default_serial = 0;
                 default_parallel = 0;
