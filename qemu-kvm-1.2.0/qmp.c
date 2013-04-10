@@ -23,6 +23,7 @@
 #include "hw/qdev.h"
 #include "blockdev.h"
 #include "qemu/qom-qobject.h"
+#include "migration.h"
 
 NameInfo *qmp_query_name(Error **errp)
 {
@@ -143,6 +144,17 @@ static void encrypted_bdrv_it(void *opaque, BlockDriverState *bs)
 void qmp_cont(Error **errp)
 {
     Error *local_err = NULL;
+
+    //Mahesh: CloudClone changes
+    //libvirt issues command to start emulation('cont') right after creating VM, which
+    //shouldn't be done at destination, if cloning is in progress
+    if( is_precopy_clone_dest )
+    {
+#ifdef DCLOUDCLONE
+      fprintf(stderr, "qmp_cont:cloning\n");
+#endif
+      return;
+    }
 
     if (runstate_check(RUN_STATE_INMIGRATE)) {
         error_set(errp, QERR_MIGRATION_EXPECTED);
