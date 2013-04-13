@@ -1280,9 +1280,11 @@ int clone_disk(void)
 		   instead of opening 'filename' directly */
 
 		/* if there is a backing file, use it */
+		//Cloudclone: create a block device to hold old driver
 		bs1 = bdrv_new("");
 #ifdef DCLOUDCLONE
-		fprintf(stderr, "opening src file: %s, bs1 file %s\n", file, bs1->file);
+		fprintf(stderr, "opening src file: %s, bs1 file name %s, file pointer %s, drv %x\n",
+                                                                      filename, bs1->filename, bs1->file, drv);
 #endif
 		int ret = bdrv_open(bs1, filename, 0, drv);
 		if (ret < 0) {
@@ -1294,7 +1296,9 @@ int clone_disk(void)
 
 		if (bs1->drv && bs1->drv->protocol_name)
 			is_protocol = 1;
-
+#ifdef DCLOUDCLONE
+		fprintf(stderr, "cloudclone:Deleting block driver for file %s\n", filename);
+#endif
 		bdrv_delete(bs1);
 
 		snprintf(tmp_filename, sizeof(tmp_filename), "%s_clone", filename);
@@ -1316,20 +1320,17 @@ int clone_disk(void)
 				drv->format_name);
 		}
                
-                //creating new incremental image for source
+                //cloudclone: creating new incremental image for source
 		ret = bdrv_create(bdrv_qcow2, tmp_filename, options);
 		if (ret < 0) {
 			fprintf(stderr, "error probe 2 \n");
 			return ret;
 		}
 
-		//changing qemu old src file to new file
+		//cloudclone:changing qemu old src file to new file
 		qemu_opt_reset(dinfo->opts, "file", tmp_filename);
 		file = qemu_opt_get(dinfo->opts, "file");
 		drv = bdrv_qcow2;
-		//fprintf(stderr, "after resetting opt\n");
-
-
 
 		int bdrv_flags = 0;
 		if (cache == 0) /* no caching */
@@ -1340,6 +1341,19 @@ int clone_disk(void)
 
 		dinfo->bdrv->drv->bdrv_close(dinfo->bdrv);
 
+#ifdef DCLOUDCLONE
+                fprintf(stderr, "cloudclone: clonedisk deleting file pointer %x \n", dinfo->bdrv->file);
+#endif
+                //cloudclone: deleting file pointer
+                if (dinfo->bdrv->file)
+                {
+                  bdrv_delete(dinfo->bdrv->file);
+                  dinfo->bdrv->file = NULL;
+                }
+
+#ifdef DCLOUDCLONE
+		fprintf(stderr, "cloudclone:opening another file image: %s \n", file);
+#endif
 		if (bdrv_open(dinfo->bdrv, file, bdrv_flags, drv) < 0) {
 			fprintf(stderr, "qemu: could not open disk image %s: %s\n",
 							file, strerror(errno));

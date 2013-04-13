@@ -48,6 +48,8 @@
 
 #define NOT_DONE 0x7fffffff /* used while emulated sync operation in progress */
 
+#define DCLOUDCLONE
+
 typedef enum {
     BDRV_REQ_COPY_ON_READ = 0x1,
     BDRV_REQ_ZERO_WRITE   = 0x2,
@@ -625,6 +627,9 @@ static int bdrv_open_common(BlockDriverState *bs, const char *filename,
     int flags, BlockDriver *drv)
 {
     int ret, open_flags;
+#ifdef DCLOUDCLONE
+    fprintf(stderr, "Mahesh: bdrv_open_common: bs->file = %x \n", bs->file);
+#endif
 
     assert(drv != NULL);
     assert(bs->file == NULL);
@@ -693,6 +698,9 @@ static int bdrv_open_common(BlockDriverState *bs, const char *filename,
     return 0;
 
 free_and_fail:
+#ifdef DCLOUDCLONE
+    fprintf(stderr, "Mahesh: bdrv_open_common: deleting bs->file = %x \n", bs->file);
+#endif
     if (bs->file) {
         bdrv_delete(bs->file);
         bs->file = NULL;
@@ -861,6 +869,9 @@ unlink_and_fail:
 
 void bdrv_close(BlockDriverState *bs)
 {
+#ifdef DCLOUDCLONE
+    fprintf(stderr, "cloudclone:closing bdrv\n");
+#endif /*DCLOUDCLONE*/
     bdrv_flush(bs);
     if (bs->drv) {
         if (bs->job) {
