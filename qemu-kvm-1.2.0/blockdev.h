@@ -48,6 +48,9 @@ void drive_get_ref(DriveInfo *dinfo);
 void drive_put_ref(DriveInfo *dinfo);
 DriveInfo *drive_get_by_blockdev(BlockDriverState *bs);
 
+//cloudclone changes
+int clone_disk(void);
+
 QemuOpts *drive_def(const char *optstr);
 QemuOpts *drive_add(BlockInterfaceType type, int index, const char *file,
                     const char *optstr);

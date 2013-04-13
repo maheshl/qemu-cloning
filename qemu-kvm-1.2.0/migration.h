@@ -60,6 +60,8 @@ struct MigrationState
 //Source need to use opType in MigrationState
 extern bool is_precopy_clone_dest;
 void signal_end_cloning(void);
+void qmp_precopy_cloning(const char *uri, bool has_blk, bool blk,
+                 bool has_inc, bool inc, Error **errp);
 
 //  add_pavan
 void do_precopy_cloning(MigrationState *s);

@@ -20,6 +20,8 @@
 #include "trace.h"
 #include "arch_init.h"
 
+#define DCLOUDCLONE
+
 static QTAILQ_HEAD(drivelist, DriveInfo) drives = QTAILQ_HEAD_INITIALIZER(drives);
 
 static const char *const if_name[IF_COUNT] = {
@@ -1197,4 +1199,154 @@ BlockJobInfoList *qmp_query_block_jobs(Error **errp)
     BlockJobInfoList *prev = &dummy;
     bdrv_iterate(do_qmp_query_block_jobs_one, &prev);
     return dummy.next;
+}
+
+/*
+ * CloudClone changes
+ * clone_disk
+ * Make source image as read only and create a new incremental image for source
+ * */
+int clone_disk(void)
+{
+	DriveInfo *dinfo;
+
+	qemu_aio_flush();
+	bdrv_flush_all();
+
+	QTAILQ_FOREACH(dinfo, &drives, next) {
+		char *buf;
+		char *file;
+		int cache = 1;
+		BlockDriver *drv = NULL;
+		enum { MEDIA_DISK, MEDIA_CDROM } media;
+
+
+		media = MEDIA_DISK;
+		if ((buf = qemu_opt_get(dinfo->opts, "media")) != NULL) {
+			if (!strcmp(buf, "disk")) {
+				media = MEDIA_DISK;
+			} else if (!strcmp(buf, "cdrom")) {
+				media = MEDIA_CDROM;
+			}
+		}
+		switch(dinfo->type) {
+			case IF_IDE:
+			case IF_SCSI:
+			case IF_XEN:
+			case IF_NONE:
+				switch(media) {
+					case MEDIA_DISK:
+						break;
+					case MEDIA_CDROM:
+						continue;
+						break;
+				}
+				break;
+			case IF_SD:
+			case IF_FLOPPY:
+			case IF_PFLASH:
+			case IF_MTD:
+			case IF_VIRTIO:
+			case IF_COUNT:
+				continue;
+				break;
+		}
+
+		if ((buf = qemu_opt_get(dinfo->opts, "cache")) != NULL) {
+			if (!strcmp(buf, "off") || !strcmp(buf, "none"))
+				cache = 0;
+			else if (!strcmp(buf, "writethrough"))
+				cache = 1;
+			else if (!strcmp(buf, "writeback"))
+				cache = 2;
+		}
+
+		file = qemu_opt_get(dinfo->opts, "file");
+#ifdef DCLOUDCLONE
+		fprintf(stderr, "Creating incremental file: %s\n", file);
+#endif
+
+
+		BlockDriverState *bs1;
+		int64_t total_size;
+		int is_protocol = 0;
+		BlockDriver *bdrv_qcow2;
+		QEMUOptionParameter *options;
+		char *filename = file;
+		char tmp_filename[PATH_MAX];
+		char backing_filename[PATH_MAX];
+
+		/* if snapshot, we create a temporary backing file and open it
+		   instead of opening 'filename' directly */
+
+		/* if there is a backing file, use it */
+		bs1 = bdrv_new("");
+#ifdef DCLOUDCLONE
+		fprintf(stderr, "opening src file: %s, bs1 file %s\n", file, bs1->file);
+#endif
+		int ret = bdrv_open(bs1, filename, 0, drv);
+		if (ret < 0) {
+			bdrv_delete(bs1);
+			fprintf(stderr, "error probe 1 \n");
+			return -1;
+		}
+		total_size = bdrv_getlength(bs1) >> BDRV_SECTOR_BITS;
+
+		if (bs1->drv && bs1->drv->protocol_name)
+			is_protocol = 1;
+
+		bdrv_delete(bs1);
+
+		snprintf(tmp_filename, sizeof(tmp_filename), "%s_clone", filename);
+
+		/* Real path is meaningless for protocols */
+		if (is_protocol)
+			snprintf(backing_filename, sizeof(backing_filename),
+					 "%s", filename);
+		else
+			realpath(filename, backing_filename);
+
+		bdrv_qcow2 = bdrv_find_format("qcow2");
+		options = parse_option_parameters("", bdrv_qcow2->create_options, NULL);
+
+		set_option_parameter_int(options, BLOCK_OPT_SIZE, total_size * 512);
+		set_option_parameter(options, BLOCK_OPT_BACKING_FILE, backing_filename);
+		if (drv) {
+			set_option_parameter(options, BLOCK_OPT_BACKING_FMT,
+				drv->format_name);
+		}
+               
+                //creating new incremental image for source
+		ret = bdrv_create(bdrv_qcow2, tmp_filename, options);
+		if (ret < 0) {
+			fprintf(stderr, "error probe 2 \n");
+			return ret;
+		}
+
+		//changing qemu old src file to new file
+		qemu_opt_reset(dinfo->opts, "file", tmp_filename);
+		file = qemu_opt_get(dinfo->opts, "file");
+		drv = bdrv_qcow2;
+		//fprintf(stderr, "after resetting opt\n");
+
+
+
+		int bdrv_flags = 0;
+		if (cache == 0) /* no caching */
+			bdrv_flags |= BDRV_O_NOCACHE;
+		else if (cache == 2) /* write-back */
+			bdrv_flags |= BDRV_O_CACHE_WB;
+		bdrv_flags &= ~BDRV_O_NATIVE_AIO;
+
+		dinfo->bdrv->drv->bdrv_close(dinfo->bdrv);
+
+		if (bdrv_open(dinfo->bdrv, file, bdrv_flags, drv) < 0) {
+			fprintf(stderr, "qemu: could not open disk image %s: %s\n",
+							file, strerror(errno));
+			return 1;
+		}
+	}
+	return 0;
+
+
 }

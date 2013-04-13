@@ -523,6 +523,22 @@ static QemuOpt *qemu_opt_find(QemuOpts *opts, const char *name)
     return NULL;
 }
 
+/*
+ *Mahesh: CloudClone Changes:
+ * Used to reset the qemu option (Used to reset the qemuimage already set earlier at source)  
+ * */
+int qemu_opt_reset(QemuOpts *opts, const char *name, const char *value)
+{
+    QemuOpt *opt = qemu_opt_find(opts, name);
+    if(opt)
+    {
+        //g_strdup duplicates the passed string.(glib API)
+        opt->str = g_strdup(value);
+        return 0;
+    }
+    return 1;
+}
+
 const char *qemu_opt_get(QemuOpts *opts, const char *name)
 {
     QemuOpt *opt = qemu_opt_find(opts, name);

@@ -456,7 +456,10 @@ void cloning_stop_n_copy_phase(MigrationState *s)
 	fprintf(stderr, "do_precopy_cloning:%d %d \n", old_vm_running , s->opType);        
 #endif
 	s->total_time = qemu_get_clock_ms(rt_clock) - s->total_time;
+
         if (s->state != MIG_STATE_COMPLETED || s->opType == CLONING) {
+            //make source image as read only and create a new incremental image for source
+            clone_disk();  
             if (old_vm_running) {
                 vm_start();
             }
