@@ -76,5 +76,8 @@ void hmp_closefd(Monitor *mon, const QDict *qdict);
 void hmp_precopy_clone(Monitor *mon, const QDict *qdict);
 // end_pavan
 
+//cloudclone
 
+void hmp_info_cloning(Monitor *mon, const QDict *qdict);
+//
 #endif

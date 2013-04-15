@@ -1026,12 +1026,33 @@ void hmp_migrate(Monitor *mon, const QDict *qdict)
     }
 }
 
+/*
+ * hmp_info_cloning: Indicate whether cloning is completed or not.
+ * Need to be called from source. Destinatin will be signalled by 
+ * signal_end_notify
+ * */
+void hmp_info_cloning(Monitor *mon, const QDict *qdict)
+{
+  int status = qemu_info_cloning();
+  if(status == 1)
+  {
+    monitor_printf(mon, "cloning completed\n");
+  }
+  else if (status == 0)
+  {
+    monitor_printf(mon, "cloning is in progress\n");
+  }
+  else if (status == -1)
+  {
+    monitor_printf(mon, "cloning error\n");
+  }
+}
 // add_pavan
  void hmp_precopy_clone(Monitor *mon, const QDict *qdict)
 {
 //  no concept of detaching from monitor unlike migration
 //  as the source vm also keeps running 
-//  int detach = qdict_get_try_bool(qdict, "detach", 0);
+    //int detach = qdict_get_try_bool(qdict, "detach", 0);
     int blk = qdict_get_try_bool(qdict, "blk", 0);
     int inc = qdict_get_try_bool(qdict, "inc", 0);
     const char *uri = qdict_get_str(qdict, "uri");

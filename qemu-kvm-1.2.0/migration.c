@@ -32,7 +32,7 @@
 #define DPRINTF(fmt, ...) \
     do { } while (0)
 #endif
-//#define DCLOUDCLONE
+#define DCLOUDCLONE
 enum {
     MIG_STATE_ERROR,
     MIG_STATE_SETUP,
@@ -104,7 +104,7 @@ void process_incoming_migration(QEMUFile *f)
     /* Make sure all file formats flush their mutable metadata */
     bdrv_invalidate_cache_all();
 
-    if (autostart) {
+    if (autostart || is_precopy_clone_dest) {
         vm_start();
     } else {
         runstate_set(RUN_STATE_PRELAUNCH);
@@ -435,9 +435,37 @@ bool migration_has_failed(MigrationState *s)
             s->state == MIG_STATE_ERROR);
 }
 
+//cloudclone: mahesh
+/*
+ * qemu_info_cloning
+ * indicates the status of cloning.
+ * return 1 indicates cloning is completed
+ * return 0 indicates cloning is in progress
+ * return -1 indicates error in cloning 
+ * */
+int qemu_info_cloning()
+{
+  int status = 0;
+  MigrationState *s = migrate_get_current();
+  if(s->state == MIG_STATE_COMPLETED)
+  {
+    status = 1;
+  }
+  else if(s->state == MIG_STATE_ACTIVE)
+  {
+    status = 0;
+  }
+  else if(s->state == MIG_STATE_ERROR ||
+          s->state == MIG_STATE_CANCELLED)
+  {
+    status = -1;
+  }
+  return status;
+}
+//cloudclone
+
 
 // start_pavan
-
 void cloning_stop_n_copy_phase(MigrationState *s)
 {
         int old_vm_running = runstate_is_running();
@@ -457,13 +485,12 @@ void cloning_stop_n_copy_phase(MigrationState *s)
 #endif
 	s->total_time = qemu_get_clock_ms(rt_clock) - s->total_time;
 
-        if (s->state != MIG_STATE_COMPLETED || s->opType == CLONING) {
-            //make source image as read only and create a new incremental image for source
-            clone_disk();  
-            if (old_vm_running) {
+       //make source image as read only and create a new incremental image for source
+       clone_disk();  
+       if (old_vm_running) {
                 vm_start();
-            }
-        }
+       }
+       
 }
 
 void cloning_iterate_phase(void *opaque)

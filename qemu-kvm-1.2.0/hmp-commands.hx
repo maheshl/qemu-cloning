@@ -797,6 +797,23 @@ Inject an NMI on the given CPU (x86 only).
 ETEXI
 
     {
+        .name       = "info_cloning",
+        .args_type  = "",
+        .params     = "",
+        .help       = "info_cloning command to indicate the progress if cloning",
+        .mhandler.cmd = hmp_info_cloning,
+    },
+
+
+STEXI
+@item clone [-d] [-b] [-i] @var{uri}
+@findex clone
+Clone to @var{uri} (using -d to not wait for completion).
+	-b for migration with full copy of disk
+	-i for migration with incremental copy of disk (base image is shared)
+ETEXI
+
+    {
         .name       = "clone",
         .args_type  = "detach:-d,blk:-b,inc:-i,uri:s",
         .params     = "[-d] [-b] [-i] uri",

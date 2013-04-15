@@ -1229,6 +1229,9 @@ int clone_disk(void)
 				media = MEDIA_CDROM;
 			}
 		}
+#ifdef DCLOUDCLONE
+		fprintf(stderr, "clone_disk: Before Switch: dinfo type %d before switch \n", dinfo->type);
+#endif
 		switch(dinfo->type) {
 			case IF_IDE:
 			case IF_SCSI:
@@ -1251,7 +1254,9 @@ int clone_disk(void)
 				continue;
 				break;
 		}
-
+#ifdef DCLOUDCLONE
+		fprintf(stderr, "clone_disk: Before Switch: dinfo type %d after switch \n", dinfo->type);
+#endif
 		if ((buf = qemu_opt_get(dinfo->opts, "cache")) != NULL) {
 			if (!strcmp(buf, "off") || !strcmp(buf, "none"))
 				cache = 0;

@@ -33,6 +33,10 @@ enum {
 };
 // end_pavan
 
+//mahesh: cloudclone
+int qemu_info_cloning();
+//cloudclone
+
 typedef struct MigrationState MigrationState;
 
 struct MigrationState

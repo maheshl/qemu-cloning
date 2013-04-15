@@ -322,7 +322,7 @@ static void res_free(void)
  */
 void signal_end_cloning(void)
 {
-  const char* output_str = "oooooooooo";
+  const char* output_str = "iiiiiii";
   int output_str_len = 10;
   char path[100];
 
@@ -1642,6 +1642,9 @@ static bool main_loop_should_exit(void)
         }
     }
     if (qemu_reset_requested()) {
+#ifdef DCLOUDCLONE
+        fprintf(stderr, "vl.c:MAHESH:VM is paused\n");
+#endif
         pause_all_vcpus();
         cpu_synchronize_all_states();
         qemu_system_reset(VMRESET_REPORT);

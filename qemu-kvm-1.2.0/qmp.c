@@ -25,6 +25,8 @@
 #include "qemu/qom-qobject.h"
 #include "migration.h"
 
+#define DCLOUDCLONE
+
 NameInfo *qmp_query_name(Error **errp)
 {
     NameInfo *info = g_malloc0(sizeof(*info));
@@ -86,6 +88,9 @@ void qmp_quit(Error **err)
 
 void qmp_stop(Error **errp)
 {
+#ifdef DCLOUDCLONE
+    fprintf(stderr, "qmp_stop:MAHESH:VM is paused\n");
+#endif
     vm_stop(RUN_STATE_PAUSED);
 }
 
